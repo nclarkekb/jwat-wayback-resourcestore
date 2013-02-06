@@ -46,13 +46,13 @@ public class JWATResource extends Resource {
 	public static Resource getResource(InputStream rin, long offset) throws IOException, ResourceNotAvailableException {
 		JWATResource r = new JWATResource();
 
-		r.pbin = new ByteCountingPushBackInputStream(rin, 16);
+		r.pbin = new ByteCountingPushBackInputStream(rin, 32);
 		ByteCountingPushBackInputStream in = null;
 
 		if (GzipReader.isGzipped(r.pbin)) {
 			r.gzipReader = new GzipReader(r.pbin);
 			if ( (r.gzipEntry = r.gzipReader.getNextEntry()) != null ) {
-				in = new ByteCountingPushBackInputStream(new BufferedInputStream( r.gzipEntry.getInputStream(), 128), 16);
+				in = new ByteCountingPushBackInputStream(new BufferedInputStream( r.gzipEntry.getInputStream(), 8192), 32);
 			} else {
 				throw new ResourceNotAvailableException("GZip entry is invalid");
 			}
@@ -62,7 +62,7 @@ public class JWATResource extends Resource {
 		}
 		Payload payload = null;
 		HttpHeader httpHeader = null;
-		if (ArcReaderFactory.isArcFile(in)) {
+		if (ArcReaderFactory.isArcRecord(in)) {
 			r.arcReader = ArcReaderFactory.getReaderUncompressed();
 			r.arcReader.setUriProfile(UriProfile.RFC3986_ABS_16BIT_LAX);
 			r.arcReader.setBlockDigestEnabled(false);
@@ -82,15 +82,15 @@ public class JWATResource extends Resource {
 					r.length = payload.getTotalLength();
 					r.status = 200;
 				} else {
-					r.payloadStream = new ByteArrayInputStream( new byte[0]);
+					r.payloadStream = new ByteArrayInputStream(new byte[0]);
 					r.length = 0;
 					r.status = 200;
 				}
 			}
 		}
-		else if ( WarcReaderFactory.isWarcFile(in) ) {
+		else if ( WarcReaderFactory.isWarcRecord(in) ) {
 			r.warcReader = WarcReaderFactory.getReaderUncompressed();
-			r.warcReader.setWarcTargerUriProfile(UriProfile.RFC3986_ABS_16BIT_LAX);
+			r.warcReader.setWarcTargetUriProfile(UriProfile.RFC3986_ABS_16BIT_LAX);
 			r.warcReader.setBlockDigestEnabled(false);
 			r.warcReader.setPayloadDigestEnabled(false);
 			r.warcRecord = r.warcReader.getNextRecordFrom(in, offset);
@@ -108,7 +108,7 @@ public class JWATResource extends Resource {
 					r.length = payload.getTotalLength();
 					r.status = 200;
 				} else {
-					r.payloadStream = new ByteArrayInputStream( new byte[0]);
+					r.payloadStream = new ByteArrayInputStream(new byte[0]);
 					r.length = 0;
 					r.status = 200;
 				}
